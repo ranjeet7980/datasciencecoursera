@@ -1,0 +1,123 @@
+---
+title: "PA1_template"
+author: "Rezyananya"
+date: "16 September 2017"
+output: md_document
+---
+#Let's first read the data
+```{r echo=TRUE}
+FootStep <- read.csv(file="C:/Users/Priyanka/Documents/Reproducible/activity.csv",header = T,sep = ",",stringsAsFactors = FALSE)
+```
+
+#compute the date
+```{r echo=TRUE}
+FootStep$date <-as.Date(FootStep$date,"%Y-%m-%d")
+str(FootStep)
+```
+
+## Calculate total number of steps taken each day
+```{r echo=TRUE}
+library(dplyr)
+  MeanTotal <- FootStep %>% group_by(date) %>%
+  summarize(TotalSteps = sum(steps,na.rm = T),
+  MeanSteps = mean(steps,na.rm = T))
+```
+## Histogram of the total number of steps taken each day
+```{r echo=TRUE}
+  with(MeanTotal, hist(TotalSteps, xlab = 'Total Steps per day', main = 'Frequency', col = 'red'))
+```
+conclusion: Graph is showing the hightest steps taken during the period (10000 - 15000). 
+
+
+#Calculate and report the mean and median of the total number of steps taken per day
+
+```{r echo=TRUE}
+  summary(MeanTotal$TotalSteps)
+  summary(MeanTotal$MeanSteps)
+```
+
+#What is the average daily activity pattern?
+```{r echo=TRUE}
+  AverageDailyPattern <- FootStep %>% group_by(interval) %>%
+    summarize(MeanSteps = mean(steps,na.rm = T))
+```  
+
+#1.make time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken,averaged across all days (y-axis).  
+
+```{r echo=TRUE}  
+  plot(AverageDailyPattern, xlab = 'interval', ylab = 'Average number of steps taken', type   = 'l')
+```
+
+#Which 5-minute interval, on average across all the days in the dataset,contains the maximum number of steps?
+Ans: Maxium number of steps taken between the interval (500-1000).
+  
+#Imputing missing values
+#1.Calculate and report the total number of missing values in the dataset(i.e the total number of rows with NAs) 
+```{r echo=TRUE}
+  mean(is.na(FootStep$steps))
+  sum(is.na(FootStep$steps))
+```  
+
+Conclusion: Near about thirteen percent of the values are missing from the data. 
+
+#As we can see we don't have any missing values here now.
+```{r echo=TRUE}
+  sum(is.na(AverageDailyPattern$MeanSteps))
+```  
+#Create a new dataset (totalNA) that is equal to the original dataset but with the missing data filled in.
+```{r echo=TRUE}
+  totalNA <- FootStep
+  for (j in 1:nrow(totalNA)) {
+    if (is.na(totalNA$steps[j])) {
+      index <- totalNA$interval[j]
+      value <- subset(AverageDailyPattern, interval==index)
+      totalNA$steps[j] <- value$MeanSteps}
+  }
+  
+  head(totalNA)
+
+  MeanTotal2 <- totalNA %>% group_by(date)%>%
+    summarize (TotalSteps = sum(steps,na.rm=T),
+  MeanSteps = mean(steps,na.rm = T))
+```
+#Graph
+```{r echo=TRUE}
+with(MeanTotal2, hist(TotalSteps, xlab = 'Total Steps per day', main = 'Frequency', col = 'blue'))
+```
+Conclusion:Graph is showing the hightest steps taken during the period (10000 - 15000) again with new datasetbut this time with a littel increase in the frequency as compare to previous data.Yes there is little difference in their mean and median.
+
+#Difference of two datasets
+```{r echo=TRUE}
+summary(MeanTotal$TotalSteps)
+summary(MeanTotal2$TotalSteps)
+```
+
+#Are there differences in activity patterns between weekdays and weekends?
+```{r echo=TRUE}
+  totalNA$day<- ifelse(weekdays(totalNA$date) %in% c("Saturday", "Sunday"), "weekend",   "weekday")
+
+  Weekend <- filter(totalNA, day == "weekend")
+  Weekday <- filter(totalNA, day == "weekday")
+  Weekend <- Weekend %>% group_by(interval) %>%
+  summarize(MeanSteps = mean(steps)) 
+  Weekend$day <- "weekend"
+
+  Weekday <- Weekday %>% group_by(interval) %>%
+  summarize(MeanSteps = mean(steps)) 
+  Weekday$day <- "weekday"
+
+  ActivityPattern <- rbind(Weekend, Weekday)
+  ActivityPattern$day <- as.factor(ActivityPattern$day)
+  ActivityPattern$day <- relevel(ActivityPattern$day, "weekend")
+```  
+
+#Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+  
+```{r echo=TRUE}
+  
+  library(ggplot2)
+  
+  g <- ggplot(ActivityPattern, aes (interval, MeanSteps))
+  g + geom_line() + facet_grid (day~.)+ labs(y = "Average number of steps taken") + labs(x   = "Interval")
+```  
+Conclusion: Yes,there is lot of difference between activity patterns between weekdays and weekends.As we can see from the graph that there is no high level activity for weekend data and the activity is preity constant through out the period of time but for weekday we can see high level activity at particularpoint of time only.  
